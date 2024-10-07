@@ -2,8 +2,8 @@
 
 Author: Evan Cheng
 
-The xxxx.qmd file is the report
+The project 1.qmd file is the markdown file for the report
 
-The xxx.r file is the code used for the analysis 
+The 2550_Project_1.R file is the code used for the analysis and figures
 
-The xxx.csv are the data used for the analysis 
+The project1_data.csv are the data used for the analysis 
