@@ -1,0 +1,164 @@
+---
+title: "Project 3 Simulation"
+subtitle: "PHP - 2550"
+author: "Evan"
+date: "December 5, 2024"
+format:
+ pdf:
+   linestretch: 1.5
+   geometry:
+     - top=1in
+     - bottom=1in
+     - left=1in
+     - right=1in
+---
+
+::: {.abstract style="margin-bottom: 3em; line-height: 1.6;"}
+# Abstract
+
+This study examines optimal research design strategies under budget constraints in cluster randomized trials, where initiating new clusters costs more than adding observations to existing ones. Computer simulations analyzed two data types: continuous measurements and count data, exploring how cost ratios between new and existing cluster sampling affect study efficiency.
+
+Results show that optimal design strategies vary significantly based on data type and cost structures. With low cost ratios (2:1), maximizing cluster numbers achieved high statistical power (0.80) for continuous data. However, performance declined markedly as cost ratios increased to 5:1 and 10:1. Count data demonstrated greater resilience to higher cost ratios when increased within-cluster sampling was possible, challenging traditional assumptions about cluster quantity dominance.
+
+The findings provide concrete guidance for research design under budget constraints. When possible, researchers should minimize cost differentials between new and existing cluster sampling. When cost reduction isn't feasible, design strategies should align with data type - prioritizing cluster numbers for continuous data while allowing more within-cluster sampling for count data. These insights enable more efficient resource allocation in research design, particularly in clinical and public health studies where budget constraints often limit study scope.
+
+![](images/Screenshot%202024-12-05%20at%2000.36.13.png){width="53" height="42"}
+:::
+
+# Introduction
+
+Cluster randomized trials (CRTs) have emerged as a crucial experimental design method in many fields, such as medical research, public health interventions, and clinical studies. In these trials, groups of subjects are randomized to be assigned to treatment or control conditions. Given that, the method consists unique challenges in both design and analysis (Hayes & Moulton, 2017). While CRTs offer practical advantages in implementation and can help minimize contamination between treatment groups, they also introduce complex considerations regarding statistical power, cost efficiency, and optimal resource allocation (Hemming et al., 2019).
+
+A fundamental challenge in designing CRTs is the balance between statistical power and resource constraints. Researchers must determine not only the number of clusters to include but also the number of observations within each cluster; such decsion can significantly impact both the study's statistical properties and its implementation costs. This optimization problem becomes particularly complex when considering differential costs between initial and subsequent samples within clusters, which is a common scenario in clinical research (Campbell et al., 2020). For instance, in medical studies, the cost structure typically reflects higher expenses for collecting new biological samples (biological replicates) compared to repeated measurements from the same sample (technical replicates), while accounting for the correlation structure built-in in such nested designs (Blainey et al., 2021).
+
+The hierarchical nature of CRTs data requires complex statistical modeling approaches to account for within-cluster correlation and properly estimate treatment effects. Traditional power calculations and sample size determination methods often fail to adequately address the complex role between cluster size, number of clusters, intraclass correlation, and cost constraints (Thompson et al., 2018). In addition to that, the relationship between these factors becomes even more complicated with different underlying data distributions, such as normal versus count data, which are common in bio-medical applications (Wu & Zhang, 2022).
+
+Recent findings have highlighted the importance of simulation-based approaches for optimizing experimental designs under resource constraints. These approaches allow researchers to explore the impact of various design choices on statistical power and estimation precision while accounting for practical limitations (Johnson et al., 2021). However, there remains a critical need for systematic frameworks that can guide researchers in making optimal design decisions while considering both statistical validity and real-world efficiency, particularly in the context of CRTs with varies sampling costs.
+
+The current research aims to address the design optimization challenges in cluster randomized trials (CRTs) under budget constraints through three primary focus. First, the study implements the ADEMP framework to systematically evaluate potential study designs. Second, the analysis explores how data generation parameters and relative sampling costs impact optimal design configurations. Third, the investigation extends to Poisson-distributed outcomes to broaden applicability beyond normal distributions. This approach integrates hierarchical modeling with cost-optimization strategies, developing a comprehensive simulation framework that accommodates scenarios where sampling costs differ between and within clusters. By examining both normal and Poisson distributions for outcome variables, the methodology extends current approaches to support a broader range of applications.
+
+# Method
+
+### Simulation Study Design
+
+This study employs the ADEMP framework - a systematic approach for designing and reporting simulation studies that consists of five key components: Aims, Data-generating mechanisms, Estimands, Methods, and Performance measures. This structured framework enables transparent reporting and comprehensive evaluation of simulation studies while ensuring reproducibility of each design decisions.
+
+### Aims
+
+The primary aim is to determine the optimal allocation of resources in cluster randomized trials under budget constraints. Specifically, to identify the optimal number of clusters and observations per cluster that maximizes statistical power for detecting treatment effects while adhering to a fixed budget B. The current investigation will be extended to examine how different cost ratios and underlying data distributions impact these optimal design choices.
+
+### Data-generating Mechanisms
+
+The data generation follows a hierarchical structure reflecting the nested nature of cluster randomized trials. For the normal distribution case, a three-level hierarchical model can be established.The simulation explored design configurations across a systematic grid of parameters:
+
+Number of clusters: $G \in {10, 15, 20, 25, 30, 35, 40, 45, 50}$
+
+Observations per cluster: $R \in {2, 4, 6, 8, 10, 12, 14, 16, 18, 20}$
+
+For each combination of $G$ and $R$, outcomes $Y_{ij}$ are generated according to the specified hierarchical model, where $i = 1,\ldots,G$ indicates the cluster and $j = 1,\ldots,R$ indicates the observation within cluster. This parameter grid allowed examination of designs ranging from few large clusters (e.g., $G=10, R=20$) to many small clusters (e.g., $G=50, R=2$) as this allows comprehensive evaluation of power and efficiency trade-offs under different cost ratios.
+
+The model specification proceeds as follows:
+
+Level 1 (Fixed Effects): $$\mu_{i0} = \alpha + \beta X_i \quad \text{(fixed effect, $\mu_{i0} = \alpha$ or $\mu_{i0} = \alpha+\beta$)}$$
+
+This level captures the primary treatment effect through the coefficient $\beta$ and baseline effect $\alpha$.
+
+Level 2 (Cluster Level): $$\mu_i|\varepsilon_i = \mu_{i0} + \varepsilon_i, \quad \varepsilon_i \sim N(0, \gamma^2)$$ or: $$\mu_i \sim N(\mu_{i0}, \gamma^2)$$
+
+The cluster-level random effects are incorporated through $\varepsilon_i$, accounting for between-cluster variation. Level 3 (Observation Level): $$Y_{ij}|\mu_i = \mu_i + e_{ij}, \quad e_{ij} \sim \text{iid } N(0, \sigma^2)$$ or: $$Y_{ij}|\mu_i \sim N(\mu_i, \sigma^2)$$
+
+The individual observations incorporate within-cluster variation through $e_{ij}$. Two important properties are included in this structure:
+
+The marginal mean of $Y_{ij}$ is $E(Y_{ij}|X_i) = \alpha + \beta X_i$ The conditional mean given $\varepsilon_i$ is $E(Y_{ij}|X_i, \varepsilon_i) = \alpha + \beta X_i + \varepsilon_i$
+
+Under the Poisson distribution, the framework is adapted to accommodate count data:
+
+Cluster Level: $$\log(\mu_i) \sim N(\alpha + \beta X_i, \gamma^2)$$
+
+A log link function ensures the mean parameter is positive.
+
+Individual Observations: $$Y_{ij}|\mu_i \sim \text{Poisson}(\mu_i)$$
+
+The property that the sum of independent Poisson random variables follows a Poisson distribution allows for aggregation within clusters: $$Y_i = \sum_{j=1}^R Y_{ij}$$ $$Y_i|\mu_i \sim \text{Poisson}(R\mu_i)$$
+
+The budget constraint in this simulation study is expressed mathematically as $B \geq G(c_1 + (R-1)c_2)$, where a fixed total budget of \$2000 is allocated across different sampling configurations. The cost structure differentiates between the initial sample ($c_1$) and subsequent samples ($c_2$) within each cluster, with $c_2$ set at \$10 per additional sample. The relationship between these costs is defined by the cost ratio $r$, where $c_1 = rc_2$.
+
+Three distinct cost ratios (2, 5, and 10) are examined to understand how varying cost-ratio impact optimal design choices. These ratios translate to initial sample costs of \$20, \$50, and \$100 respectively, while maintaining the \$10 cost for additional within-cluster observations. This cost structure reflects real-world scenarios where initiating data collection in a new cluster typically requires more resources than adding observations to an existing cluster.
+
+### Estimand
+
+The primary estimand of interest is the treatment effect parameter $\beta$, which represents the average difference in outcomes between treatment and control groups. This parameter is of direct scientific interest as it quantifies the effectiveness of the intervention. Secondary estimands include the variance components $\gamma^2$ and $\sigma^2$, which characterize the between-cluster and within-cluster variability, respectively.
+
+### Methods 
+
+Various combinations of cluster numbers (G) and within-cluster sample sizes (R) subject are evaluated to the budget constraint. For each design configuration, the current study implement maximum likelihood estimation using the lme4 package in R to fit the hierarchical models. The optimization process considers both the statistical efficiency of the estimates and the cost constraints. We explore a range of cost ratios $c_1/c_2$ to understand how different cost structures impact the optimal design choices.
+
+### Performance Measures
+
+Performance evaluation focuses on several key metrics. Primary measures include the bias and mean squared error (MSE) of the treatment effect estimate $\hat{\beta}$, the coverage probability of confidence intervals for $\beta$, and the statistical power to detect treatment effects. We also evaluate the computational efficiency and numerical stability of the estimation procedures across different design configurations. These measures are assessed through repeated simulations (200 rounds of simulations) under various parameter combinations to ensure robust conclusions.
+
+# Results
+
+The current simulation study investigated the relationship between cost ratios, design configurations, and statistical performance measures under both normal and Poisson distribution assumptions. The analysis examined three cost ratios (2:1, 5:1, and 10:1) across various combinations of cluster numbers (G) and observations per cluster (R). A distinct pattern is observed in statistical power and estimation accuracy that varied by distribution type.
+
+![*displays the optimal design strategies for cluster randomized trials under a fixed budget of \$2000, comparing normal and Poisson distributions. For each distribution, the table presents the optimal number of clusters (G) and observations per cluster (R) at three different cost ratios. Key performance metrics include power and MSE, illustrating how different cost structures influence study design efficiency across distribution types.*](images/clipboard-702735365.png)
+
+Based on Table 1, under the normal distribution assumption, the optimal design configuration for the lowest cost ratio (2:1) achieved a statistical power of 0.80 with 45 clusters and 2 observations per cluster, demonstrating the lowest MSE of 0.132. Under a Poisson distribution, the optimal design at the same cost ratio shifted to 40 clusters with 4 observations per cluster, achieving a power of 0.75 with a similar MSE of 0.142. These results suggests count data benefits from additional within-cluster replication while maintaining estimation accuracy.
+
+Further examination of Table 1 reveals different adaptations in optimal design structure between the two distributions as the cost ratio increased to 5:1. For normally distributed outcomes, the best configuration consisted 20 clusters with 4 observations per cluster, achieving a power of 0.69 with an MSE of 0.163. In contrast, the Poisson model favored a design with 20 clusters and 6 observations per cluster, resulting in a power of 0.65 and MSE of 0.186. These results indicates a consistently higher preference for within-cluster replication in count data scenarios without substantial loss in estimation precision.
+
+At the highest cost ratio (10:1), both distributions showed substantial deterioration in both statistical power and estimation accuracy (Table 1). The normal distribution's optimal design used 15 clusters with 2 observations per cluster (power = 0.40, MSE = 0.365), while the Poisson model performed best with 10 clusters and 10 observations per cluster (power = 0.45, MSE = 0.248). The Poisson model maintained better estimation accuracy despite the high cost ratio.The differences in optimal designs highlights how the underlying data distribution fundamentally affects the trade-off between cluster numbers and within-cluster replication.
+
+The heat map reveal distinct patterns in how power and MSE vary across design spaces for the two distributions. For normal outcomes, power showed greater sensitivity to the number of clusters, while the Poisson model demonstrated more balanced sensitivity to both cluster numbers and within-cluster replication. Notably, the MSE scales differed substantially between distributions, with the Poisson model showing generally lower MSE values (maximum around 0.25) compared to the normal distribution (maximum around 0.7).
+
+![*provides a direct comparison of simulations under normal and Poisson distributions, detailing MSE and power across varying numbers of clusters and observations under different cost ratios.*](images/clipboard-2434850083.png){fig-align="center"}
+
+The impact of cost ratios on feasible design regions also differed between distributions. While both showed increasingly constrained design spaces with higher cost ratios, the Poisson model maintained relatively better performance with fewer clusters and more observations per cluster, while the Normal distributed model seems to heavily favoring the number of clusters. This suggests that count data analyses can be more robust to high cost ratios when sufficient within-cluster replication is possible.
+
+These comparative results highlight the importance of considering the underlying data distribution when optimizing cluster randomized trial designs. While both distributions show decreased performance with increasing cost ratios, their optimal design configurations differ substantially. The Poisson distributions generally favoring more within-cluster replication compared to normal distributions. These findings suggest that researchers should carefully consider both their expected data distribution and cost constraints when planning cluster randomized trials, as the optimal balance between cluster numbers and within-cluster replication depends strongly on both factors.
+
+# Discussion
+
+Simulation studies play a crucial role in understanding the complex interplay between design choices and statistical performance in cluster randomized trials (CRTs). Our study specifically addressed a critical challenge regarding how cost structures influence optimal design choices under different distributional assumptions. We aim to provide empirical evidence to guide researchers facing resource constraints in real-world settings where both continuous and count data are common.
+
+The simulation study revealed several important patterns with direct implications for research design, with notable differences between normal and Poisson distributions. The relative cost between initiating new clusters and adding observations within existing clusters impacts both statistical power and mean squared error (MSE) differently depending on the underlying data distribution. At low cost ratios (2:1), continuous data designs achieved substantial statistical power (0.80) with relatively low MSE (0.132) by prioritizing cluster numbers. Count data following a Poisson distribution, however, required more within-cluster replication even at low cost ratios, achieving slightly lower power (0.75) but maintaining comparable precision (MSE = 0.142).
+
+As cost ratios increased to 5:1 and 10:1, a notable decline in both achievable power and estimation precision emerged for both distributions, but with different patterns of decline. For normal distributions, this decay was particularly evident in the highest cost ratio scenario (10:1), where maximum achievable power dropped to 0.40 with a substantial increase in MSE to 0.365. Poisson models showed more resilience to high cost ratios when sufficient within-cluster replication was possible, which maintained a better estimation precision (MSE = 0.248) despite similar power levels (0.45). This result suggests that count outcomes benefit from different cost-optimization strategies than continuous outcomes.
+
+These findings have direct applications across various research contexts, with considerations for different data distribution. In clinical trials measuring continuous outcomes, prioritizing new cluster recruitment optimizes both power and precision. For studies with count outcomes, increased within-cluster sampling proves more beneficial, particularly for maintaining estimation accuracy under high cost ratios. In genomic studies, optimal design strategies should align with both the specific outcome type and the relative importance of statistical power versus estimation precision in the research context.
+
+Our findings emphasize the importance of early consideration of both cost structures and outcome distributions in the research planning process. Rather than treating costs as a post-hoc constraint, researchers should integrate cost considerations and distributional assumptions into their initial design decisions. The comparative heat maps from our simulation provide valuable tools for visualizing the trade-offs between different design choices under various scenarios. Utilizing such tool can lead to more informed decision-making during the planning phase.
+
+Looking forward, these results suggest several promising directions for future research. First, investigating how different variance structures might influence optimal design choices for both continuous and count outcomes could provide additional insights. Second, extending the simulation framework to account for cluster-specific recruitment costs could offer more nuanced guidance for multi-site studies with different types of outcomes. Finally, developing user-friendly software tools that incorporate these distribution-specific findings could help researchers more easily optimize their study designs under various cost constraints.
+
+In conclusion, the present study provides clear evidence that cost ratios substantially impact achievable statistical power, with important implications that vary by outcome distribution. The results suggest that when possible, researchers should strive to minimize the cost ratio between initial and subsequent samples within clusters, but the optimal strategy for doing so depends crucially on whether the outcome is continuous or count-based. When cost reduction is not feasible, researchers should carefully consider the power limitations implied by higher cost ratios and adjust their design expectations accordingly, taking into account their specific outcome distribution. These insights provide a practical framework for optimizing research designs under real-world resource constraints, potentially improving the efficiency and effectiveness of future clinical and bio-medical research across a broad range of outcome types.
+
+# Limitations
+
+Several limitations of our design require consideration when interpreting the simulation study results. The primary limitation concerns the assumption of constant variance components across all experimental conditions. The simulation framework assumed homogeneous variance structures, where both between-cluster (γ²) and within-cluster (σ²) variances remain constant regardless of cluster size or treatment conditions. In reality, variance components often consist heterogeneity, with larger clusters potentially demonstrating different variability patterns than smaller ones. This limitation is particularly relevant for the Poisson model, where excess variability beyond that predicted by the basic model was not incorporated into the simulation framework.
+
+A second significant limitation relates to the cost structure assumptions in multisite studies. While the simulation employed a linear cost function differentiating between initial and subsequent observations, real-world implementation costs often exhibit more complex patterns. In multisite studies, costs typically vary significantly by location due to differences in infrastructure, labor markets, and local regulatory requirements. For instance, implementing a study across different geographic regions or types of institutions would likely encounter varying cost structures that differ from the simple linear model assumed in our design.
+
+These methodological simplifications, while necessary for computational feasibility, suggest that the results should be interpreted as theoretical guidelines rather than definitive prescriptions. The findings provide valuable insights into the relationship between cost structures and optimal design choices, but practical implementation requires careful consideration of site-specific variance patterns and cost structures. Future research incorporating heterogeneous variance components and site-specific cost variations could provide more nuanced guidance for real-world study design optimization.
+
+# Code Appendix 
+
+Github Repository Link: <https://github.com/tent284991/2550>
+
+# References
+
+Blainey, P., Smith, M. B., & Brown, C. T. (2021). Cost considerations in biological replication design. Nature Methods, 18(5), 471-474.
+
+Campbell, M. J., Hemming, K., & Taljaard, M. (2020). The stepped wedge cluster randomised trial: what it is and when it should be used. Medical Journal of Australia, 213(4), 157-160.
+
+Hayes, R. J., & Moulton, L. H. (2017). Cluster randomised trials (2nd ed.). Chapman and Hall/CRC.
+
+Hemming, K., Taljaard, M., & Forbes, A. (2019). Analysis of cluster randomized trials with repeated cross-sections: a tutorial. Trials, 20(1), 1-12.
+
+Johnson, D. E., Thompson, J. R., & Sen, P. K. (2021). Optimal design of experiments under budget constraints. Journal of Statistical Planning and Inference, 215, 141-155.
+
+Morris, T. P., White, I. R., & Crowther, M. J. (2019). Using simulation studies to evaluate statistical methods. Statistics in Medicine, 38(11), 2074-2102.
+
+Thompson, J. A., Fielding, K. L., & Davey, C. (2018). Design and analysis of pilot studies in cluster randomized trials. Statistical Methods in Medical Research, 27(5), 1378-1388.
+
+Wu, Z., & Zhang, H. (2022). Statistical methods for high-dimensional genomic data analysis. Annual Review of Statistics and Its Application, 9, 251-273.
