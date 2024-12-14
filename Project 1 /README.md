@@ -1,4 +1,4 @@
-# PHP-2550 Project 2
+# PHP-2550 Project 1
 
 Author: Evan Cheng
 
