@@ -1,8 +1,80 @@
 ---
 title: "Project 1"
+author: "Evan Cheng"
 format: pdf
 editor: visual
 ---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE,
+                      message = FALSE,
+                      echo = FALSE,
+                      fig.align = "center")
+# Library
+library(lubridate)
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(naniar)
+library(visdat)
+library(kableExtra)
+library(knitr)
+library(gridExtra)
+library(ggridges)
+library(gt)
+library(ggwordcloud)
+library(ggplot2)
+library(magick)  
+library(ggplot2)
+library(corrplot) 
+library(readr)
+library(reshape2)
+
+# Data
+marathon_dates <- read_csv("/Users/evancheng/Downloads/marathon_dates.csv")
+course_record <- read_csv("/Users/evancheng/Downloads/course_record.csv")
+aqi_values <- read_csv("/Users/evancheng/Downloads/aqi_values.csv")
+project1 <- read_csv("/Users/evancheng/Downloads/project1.csv")
+
+```
+
+```{r}
+# Data Merge 
+# Change to Colnames 
+colnames(project1)[colnames(project1) == "Sex (0=F, 1=M)"] ="Gender"
+colnames(project1)[colnames(project1) == "Race (0=Boston, 1=Chicago, 2=NYC, 3=TC, 4=D)"] ="Race"
+colnames(project1)[colnames(project1) == "Td, C"] ="Dry bulb Temp C"
+colnames(project1)[colnames(project1) == "Tw, C"] ="Wet bulb Temp C"
+colnames(project1)[colnames(project1) == "%rh"] ="Percent Relative Humidity"
+colnames(project1)[colnames(project1) == "Tg, C"] ="Black Globe Temp C"
+colnames(project1)[colnames(project1) == "SR W/m2"] ="Solar Radiation"
+colnames(project1)[colnames(project1) == "DP"] ="Dew Point in C"
+colnames(project1)[colnames(project1) == "Wind"] ="Wind Speed"
+colnames(project1)[colnames(project1) == "WBGT"] ="Wet Bulb Globe Temp"
+colnames(project1)[colnames(project1) == "%CR"] ="Percent CR"
+
+project1$Gender<-ifelse(project1$Gender== "0","F","M")  
+
+
+# For Race names 
+project1 <- project1 %>%
+  mutate(Race = case_when(
+    Race == "0" ~ "B",
+    Race == "1" ~ "C",
+    Race == "2" ~ "NY",
+    Race == "3" ~ "TC",
+    Race == "4" ~ "D"))
+
+project1 <- project1 %>%
+  mutate(Race = as.character(Race))
+
+# Merge
+full_data<-left_join(project1,course_record,
+                                  by= c("Race","Gender", "Year"))
+
+
+```
 
 ## **I. Introduction**
 
@@ -22,44 +94,159 @@ Data were collected from five major marathons: the Boston Marathon, Chicago Mara
 
 1.  **Flag**: This represents the risk level for heat illness based on WBGT (Wet Bulb Globe Temperature). Categories are:
 
-	•	White = WBGT \<10°C
+    • White = WBGT \<10°C
 
-	•	Green = WBGT 10-18°C
+    • Green = WBGT 10-18°C
 
-	•	Yellow = WBGT \>18-23°C
+    • Yellow = WBGT \>18-23°C
 
-	•	Red = WBGT \>23-28°C
+    • Red = WBGT \>23-28°C
 
-	•	Black = WBGT \>28°C
+    • Black = WBGT \>28°C
 
 2.  **Age (yr)**: The age of the participant at the time of the marathon, in years.
+
 3.  **%CR**: This shows the percentage off from the current course record for the participant’s gender. In other words, lower percentage indicates better performance.
+
 4.  **Td, C**: The dry bulb temperature, measured in Celsius, representing the air temperature.
+
 5.  **Tw, C**: The wet bulb temperature, measured in Celsius, which factors in humidity.
+
 6.  **%rh**: The percentage of relative humidity.
+
 7.  **Tg, C**: The black globe temperature in Celsius, which factors in solar radiation.
+
 8.  **SR W/m2**: Solar radiation, measured in Watts per square meter.
+
 9.  **DP**: The dew point temperature, measured in Celsius.
+
 10. **Wind**: Wind speed, measured in kilometers per hour.
+
 11. **WBGT**: Wet Bulb Globe Temperature, a composite measure that accounts for temperature, humidity, and solar radiation, used to estimate heat stress.
 
-Before the analysis, an exploratory data overview was conducted, revealing several important trends and correlations between weather variables and marathon performance. Figure 1, which plots performance against Wet Bulb Globe Temperature (WBGT), shows a clear decline in performance as WBGT increases. The effect is especially noticeable above 15°C. This supports the existing findings that higher WBGT values, indicating more stressful environmental conditions, can reduce athletic performance. Additionally, the relationship between performance and dry bulb temperature further supports the negative correlation between temperature and performance (Figure 2. Performance vs. Dry Bulb Temperature).
+Before the analysis, an exploratory data overview was conducted, revealing several important trends and correlations between weather variables and marathon performance. Figure 1, which plots performance against Wet Bulb Globe Temperature (WBGT), shows a clear decline in performance as WBGT increases. The effect is especially noticeable above 15°C. This supports the existing findings that higher WBGT values, indicating more stressful environmental conditions, can reduce athletic performance. Additionally, the relationship between performance and dry bulb temperature further supports the negative correlation between temperature and performance (Figure 2. Performance by Dry Bulb Temperature).
 
-![](images/clipboard-2670264975.png){width="645"}
+```{r}
 
-From Figure 3 and Figure 4, the plots examine the performance against relative humidity and solar radiation. The results suggest that extreme humidity slightly reduces performance. The data points are scattered, suggesting varied individual reactions to humidity. Additionally, higher levels of solar radiation seem to correlate with decreased performance; it's likely due to the impact of heat from direct solar.
 
-![](images/clipboard-2436336943.png){fig-align="center" width="386"}
+# Figure 1: Performance vs WBGT
+p1 <- ggplot(project1, aes(x = cut_width(`Wet bulb Temp C`, width = 2), 
+                      y = `Percent CR`)) +
+ geom_boxplot(fill = "lightblue", alpha = 0.7) +
+ 
+ labs(x = "Wet Bulb Temperature (°C)", 
+      y = "Performance (% Course Record)",
+      title = "Figure 1.Performance vs WBGT") +
+ theme_minimal() +
+ theme(
+   plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+   axis.title = element_text(size = 12),
+   axis.text.x = element_text(angle = 45, hjust = 1)
+ )
 
-Moreover, the plot comparing performance versus age by gender (Figure 5) reveals a clear U-shaped curve. This suggests the peak age for performance is between 25 and 50. This trend appears more pronounced among male runners compared to female runners. The overall density plot of all participants’ performance (Figure 6) shows a bimodal distribution, indicating two distinct groups within the marathon participants: highly competitive runners and more casual participants. These observations underscore the need to carefully select the analysis method to accurately evaluate the relationship between the interested variable and performance.
+p1
 
-![](images/clipboard-2322551162.png){fig-align="center" width="368"}
+# Figure 2: Performance vs Temperature using violin plots
+p2 <- ggplot(project1, aes(x = cut_width(`Dry bulb Temp C`, width = 2), 
+                      y = `Percent CR`)) +
+ geom_boxplot(fill = "lightgreen", alpha = 0.7) +
+ geom_boxplot(width = 0.2, alpha = 0.7) +
+ labs(x = "Dry Bulb Temperature (°C)",
+      y = "Performance (% Course Record)",
+      title = "Figure.2 Performance by Dry Bulb Temperature") +
+ theme_minimal() +
+ theme(
+   plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+   axis.title = element_text(size = 12),
+   axis.text.x = element_text(angle = 45, hjust = 1)
+ )
+
+p2
+```
+
+From Figure 3 and Figure 4, the plots examine the performance against relative humidity and solar radiation. The results suggest that extreme humidity slightly reduces performance. The data points are scattered, suggesting varied individual reactions to humidity. Additionally, higher levels of solar radiation seem to correlate with decreased performance; it's likely due to the impact of heat from direc solar.
+
+```{r}
+# Figure 3: Performance vs Humidity using hexbin
+p3 <- ggplot(project1, aes(x = `Percent Relative Humidity`, y = `Percent CR`)) +
+ geom_hex(bins = 30) +
+ scale_fill_viridis_c() +
+ labs(x = "Relative Humidity (%)",
+      y = "Performance (% Course Record)",
+      title = "Figure 3Performance vs Humidity") +
+ theme_minimal() +
+ theme(
+   plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+   axis.title = element_text(size = 12)
+ )
+
+p3
+
+# Figure 4: Performance vs Solar Radiation 
+p4 <- ggplot(project1, aes(x = `Solar Radiation`, y = `Percent CR`)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", color = "red", se = FALSE) +
+  labs(x = "Solar Radiation",
+       y = "Performance (% Course Record)",
+       title = "Figure 4.Performance vs Solar Radiation") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12)
+  )
+p4
+```
+
+Moreover, the plot comparing performance versus age by gender (Figure 5. Effects of Age on Marathon Performance in Men and Women) reveals a clear U-shaped curve. This suggests the peak age for performance is between 25 and 50. This trend appears more pronounced among male runners compared to female runners. The overall density plot of all participants’ performance (Figure 5. Effects of Age on Marathon Performance in Men and Women) shows a bimodal distribution, indicating two distinct groups within the marathon participants: highly competitive runners and more casual participants. These observations underscore the need to carefully select the analysis method to accurately evaluate the relationship between the interested variable and performance.
+
+```{r}
+ggplot(full_data, aes(x = `Age (yr)`, y = `Percent CR`, color = Gender)) +
+  geom_line(size = 1) +
+  scale_color_manual(values = c("F" = "steelblue", "M" = "darkgreen")) +
+  labs(title = "Figure 5. Marathon Performance by Age and Gender",
+       x = "Ages",
+       y = "Runtimes (Performance)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+```
 
 ### Missing Data
 
 The Missing Data Table reveals a 4.2% missing rate across the weather variables. It's likely that one of the years is missing all weather data. To ensure data quality, all rows with missing weather variables will be excluded from the analyses, as the data are not missing at random, and the sample size is sufficient for appropriate analysis. It’s also worth noting that the current dataset only consist performances from individuals who completed each race.
 
-![](images/截屏2024-10-06 下午10.55.34.png){width="604"}
+```{r}
+# Missing data frame
+Missing_Data<- sapply(full_data, function(x) sum(is.na(x)))
+Missing_Data_df <- data.frame(ColumnName = names(Missing_Data), `Missing Data` = Missing_Data)
+
+names(Missing_Data_df) <- c("Variables", "Missing Data")
+total_rows <- nrow(course_record_project1)  
+
+# Missing Data Summary
+missing_data_summary <-Missing_Data_df %>%  
+  filter(Variables %in% c('Black Globe Temp C', 'Dew Point in C', 'Dry bulb Temp C', 'Flag','Percent Relative Humidity', 'Solar Radiation', 'Wet Bulb Globe Temp','Wet bulb Temp C', 'Wind Speed')) %>%
+  mutate(Percent_Missing = (`Missing Data` / total_rows) * 100) %>%
+  select(Variables, `Missing Data`, Percent_Missing)
+
+# GT summary table 
+missing_data_summary %>%
+  gt() %>%
+  tab_header(
+    title = "Table 1. Missing Data Summary"
+  ) %>%
+  cols_label(
+    Variables = "Variables",
+    `Missing Data` = "Missing Values",
+    Percent_Missing = "Percentage Missing (%)"
+  ) %>%
+  fmt_number(
+    columns = vars(Percent_Missing),
+    decimals = 2  
+  )
+```
 
 ## **III. Data Analysis**
 
@@ -82,6 +269,30 @@ The interaction between age and gender was also significant, with an estimate of
 **Summary**
 
 The results highlights that both age and gender are crucial in understanding the marathon performance differences. Younger runners and females are generally closer to achieving record time, while older males show decline in performance.
+
+```{r}
+full_data$age_ranges<- cut(
+  full_data$`Age (yr)`,
+  breaks = c(0, 25, 35, 45, 55, 65, 75, Inf),  # Custom breaks for the new age ranges
+  labels = c("<15-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76+"))
+
+
+  ggplot(full_data, aes(x = age_ranges, y = `Percent CR`, fill = Gender)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("F" = "steelblue", "M" = "darkgreen")) +
+  labs(title = "Figure 6. Effects of Age on Marathon Performance in Men and Women",
+       x = "Age Ranges",
+       y = "Performance (Percent CR)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+
+
+
+
+```
 
 ### **Aim 2: Impact of Environmental Conditions**
 
@@ -107,8 +318,7 @@ The analysis of solar radiation’s impact on marathon performance reveals a sig
 
 #### **Interaction Effects**
 
-**WBGT:Age (Estimate = 5.218e-03, SE = 3.077e-03, p = 0.08992)** **WBGT:Sex (Male) (Estimate = -1.37e-01, SE = 1.071e-01, p = 0.20057)**
-The interaction between WBGT and age and WBGT and sex were not statistically significant, which indicates that the effect of Wet Bulb Globe Temperature (WBGT) on marathon performance does not seem to vary across different age groups or genders. Although WBGT is known to impact performance negatively, these results suggest that its influence is relatively uniform across ages and genders in this dataset.
+**WBGT:Age (Estimate = 5.218e-03, SE = 3.077e-03, p = 0.08992)** **WBGT:Sex (Male) (Estimate = -1.37e-01, SE = 1.071e-01, p = 0.20057)** The interaction between WBGT and age and WBGT and sex were not statistically significant, which indicates that the effect of Wet Bulb Globe Temperature (WBGT) on marathon performance does not seem to vary across different age groups or genders. Although WBGT is known to impact performance negatively, these results suggest that its influence is relatively uniform across ages and genders in this dataset.
 
 **Relative Humidity:Age (Estimate = -4.683e-03, SE = 5.646e-04, p \< 2e-16)**:
 

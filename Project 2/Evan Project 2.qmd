@@ -5,7 +5,7 @@ format: pdf
 editor: visual
 ---
 
-# **Abstract** 
+# **Abstract**
 
 The study by Hitsman et al. (2023) aimed to evaluate two smoking cessation methods—Behavioral Activation for Smoking Cessation (BASC) and Standard Behavioral Treatment (ST)—and the effectiveness of varenicline compared to a placebo for adults with Major Depressive Disorder (MDD). This randomized, placebo-controlled trial included approximately 300 participants and was conducted at two urban university research clinics in the United States.
 
@@ -27,27 +27,214 @@ The combination of pharmacotherapy and behavioral interventions tailored for thi
 
 The dataset employed in this project was derived from a study conducted by Hintsman et al. (2023), which investigated the impact of behavioral and pharmacological treatments on smoking cessation among individuals with major depressive disorder. The dataset includes a range of crucial variables for analyzing smoking abstinence outcomes. These variables encompass both treatment options, such as pharmacotherapy (with Varenicline) and psychotherapy, as well as a range of baseline characteristic variables. Characteristics include demographic information (age and sex, race/ethnicity), socio-economic status (income and education level), and detailed smoking behavior metrics (e.g., FTCD score and cigarettes per day). Additionally, psychological profiles such as the Beck Depression Inventory score, Pleasurable Events Scales, and Anhedonia scores are included to assess the individuals' mental health context, which can pontetially influence cessation success. This dataset provides the opportunity to explore how baseline variables might moderate the success of cessation treatments. A detailed data summary table is provided below for reference (Table 1. Summary Table).
 
-## Data Summary
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,
+                      message = FALSE,
+                      echo = FALSE,
+                      fig.align = "center")
 
-![Detailed structure of the data used](images/table_summary-01.jpg){fig-align="center" width="405"}
+
+```
+
+```{r}
+# Library 
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(tidyr)
+library(kableExtra)
+library(knitr)
+library(GGally)
+library(naniar)
+library(visdat)
+library(gtsummary)
+library(gt)
+library(mice)
+library(corrplot) 
+library(reshape2)
+library(ggwordcloud)
+library(magick)
+library(glmnet)
+library(caret)
+library(car)
+library(broom)
+library(gridExtra)
+library(pROC)
+library(broom)
+```
+
+```{r}
+# Data
+ori_data<- read_csv('/Users/evancheng/Downloads/project2 (1).csv')
+```
 
 The current dataset includes a diverse range of participants in terms of age, sex, and race. Most participants are within the middle-age bracket. This age distribution is relevant due to the interaction between age, smoking habits, and responses to cessation (Figure 1. Age Distribution by Race). Regarding sex, the data includes 165 male participants and 135 female participants, resulting in a near fifty-fifty split.The racial demographics are primarily Black/African American and Non-Hispanic White. While Hispanic and other races are included, they represent only an insignificant portion of the dataset. This could be a limitation, as culture and genetics can play a crucial role in smoking habits and responses to cessation.
 
-![Illustration the varying density distributions of age among participants, segmented by race to highlight demographic differences within the study population.](images/clipboard-2996487798.png){fig-align="center" width="384"}
+```{r}
+ori_data$race <- case_when(
+  ori_data$NHW == 1 ~ "White",
+  ori_data$Black == 1 ~ "Black",
+  ori_data$Hisp == 1 ~ "Hispanic",
+  TRUE ~ "Other"
+)
 
-Since the current study focuses on the effect of Varenicline among individuals with MDD, depression measurement is a critical variable, as It should be randomly assigned to each treatment group to ensure appropriate variability. The box-plots shows that treatment assignment is systematically balanced across the Behavioral Activation (BA) and Standard Treatment (ST) groups (Figure 3. BDI Scores By Treatment Group). This balance is also shown in the Varenicline and placebo groups (Figure 3. BDI Scores By Medication vs. Placebo). In other words, each treatment group consist diverse baseline characteristics. Such stratification ensures that demographic differences do not confound treatment comparisons. Key variables, like age and Beck Depression Inventory scores, display stable standard deviations. This stability in variance is essential for the validity of inferential statistics used in evaluating treatment efficacy, ensuring that the model can lead to robust interpretations.
+# Create age distribution plot with caption
+ggplot(ori_data, aes(x = age_ps)) +
+ geom_histogram(aes(fill = race), 
+               position = "dodge",
+               binwidth = 5,
+               color = "black",
+               alpha = 0.7) +
+ scale_fill_brewer(name = "Race", palette = "Set2") +
+ labs(title = "Figure 1. Age Distribution by Race",
+      x = "Age",
+      y = "Count",
+      caption = "Figure 1. Age Distrubution By Race shows the varying density distributions of age among participants, segmented by race to highlight demographic differences within the study population.") +
+ theme_minimal() +
+ theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+       legend.position = "bottom",
+       # Format caption
+       plot.caption = element_text(hjust = 0, size = 10, face = "italic"))
+```
 
-![Boxplots showing the distribution of participants' BDI score across treatment groups](images/clipboard-4012771791.png){fig-align="center" width="504"}
+Since the current study focuses on the effect of Varenicline among individuals with MDD, depression measurement is a critical variable, as It should be randomly assigned to each treatment group to ensure appropriate variability. The box-plots shows that treatment assignment is systematically balanced across the Behavioral Activation (BA) and Standard Treatment (ST) groups (Figure 2. BDI Scores By Treatment Group). This balance is also shown in the Varenicline and placebo groups (Figure 3. BDI Scores By Medication vs. Placebo). In other words, each treatment group consist diverse baseline characteristics. Such stratification ensures that demographic differences do not confound treatment comparisons. Key variables, like age and Beck Depression Inventory scores, display stable standard deviations. This stability in variance is essential for the validity of inferential statistics used in evaluating treatment efficacy, ensuring that the model can lead to robust interpretations.
+
+```{r}
+# Figure 2: BDI Scores by Treatment Group
+p2 <- ggplot(ori_data, aes(x = factor(mde_curr), y = bdi_score_w00)) +
+ geom_boxplot(aes(fill = factor(mde_curr)), alpha = 0.7) +
+ scale_fill_brewer(palette = "Set2") +
+ labs(title = "Figure 2. BDI Scores by Treatment Group",
+      x = "Current Major Depressive Episode",
+      y = "BDI Score",
+      fill = "MDE Status",
+      caption = "Distribution of Beck Depression Inventory (BDI) scores compared between participants with and without current Major Depressive Episode.") +
+ scale_x_discrete(labels = c("No MDE", "Current MDE")) +
+ theme_minimal() +
+ theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+       legend.position = "none",
+       plot.caption = element_text(hjust = 0, size = 10, face = "italic"))
+
+# Figure 3: BDI Scores by Medication vs. Placebo
+p3 <- ggplot(ori_data, aes(x = factor(antidepmed), y = bdi_score_w00)) +
+ geom_boxplot(aes(fill = factor(antidepmed)), alpha = 0.7) +
+ scale_fill_brewer(palette = "Set2") +
+ labs(title = "Figure 3. BDI Scores by Medication vs. Placebo",
+      x = "Antidepressant Medication Status",
+      y = "BDI Score",
+      fill = "Medication Status",
+      caption = "Comparison of Beck Depression Inventory (BDI) scores between participants taking antidepressant medication versus those who are not.") +
+ scale_x_discrete(labels = c("No Medication", "On Medication")) +
+ theme_minimal() +
+ theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+       legend.position = "none",
+       plot.caption = element_text(hjust = 0, size = 10, face = "italic"))
+
+# Display plots
+p2
+p3
+```
 
 ## Missing Data
 
-The dataset for this study, as shown by the missing data visualization, displays a relatively moderate level of missing data across several key variables (Figure 4. Missing Data by Variable). However, notable exceptions include Nicotine Metabolism Ratio and Cigarette Reward Value Perception which exhibit the highest occurrences of missing entries. The presence of missing data require careful consideration of our approach.
+The dataset for this study, as shown by the missing data visualization, displays a relatively moderate level of missing data across several key variables (Figure 4. Missing Data Summary). However, notable exceptions include Nicotine Metabolism Ratio and Cigarette Reward Value Perception which exhibit the highest occurrences of missing entries. The presence of missing data require careful consideration of our approach.
 
-![Missing Data Count in Data set](images/clipboard-2117120264.png){fig-align="center" width="374"}
+```{r}
+# Missing data df
+Missing_Data<- sapply(ori_data, function(x) sum(is.na(x)))
+Missing_Data_df <- data.frame(ColumnName = names(Missing_Data), `Missing Data` = Missing_Data)
 
-The choice against employing imputation strategies, such as multiple imputation, is driven by the nature of the missing data and the potential biases introduced through imputation. Given the importance of variables like NMR and crv_total_pq1 in determining the efficacy of smoking cessation, any attempt to impute these values could lead to skewed analyses and misleading conclusions. This is particularly significant in our current setting, which is a clinical studies where accurate measurements are crucial for evaluating treatment effects.
 
-Therefore, the analysis will proceed with the available complete case data, accepting the reduced sample size in exchange for maintaining the reliability and accuracy of the results. This approach ensures that any conclusions drawn are based on verifiable data, which minimizes the risk of biases that could arise from imputation.
+names(Missing_Data_df) <- c("Variables", "Missing Data")
+
+total_rows <- nrow(ori_data)  
+
+# Missing Data Summary
+missing_data_summary <-Missing_Data_df %>%  
+  filter(Variables %in% c('ftcd_score', 'inc', 'crv_total_pq1', 'shaps_score_pq1', 
+                          'NMR', 'Only.Menthol', 'readiness')) %>%
+    mutate(Percent_Missing = (`Missing Data` / total_rows) * 100) %>%
+  dplyr::select(Variables, `Missing Data`, Percent_Missing)%>%
+  mutate(Variables = case_when(
+   Variables == "ftcd_score" ~ "FTCD Score at Baseline",
+     Variables == "inc" ~ "Income",
+    Variables == "crv_total_pq1" ~ "Cigarette Reward Value at  Baseline",
+   Variables == "shaps_score_pq1" ~ "Anhedonia",
+    Variables == "NMR" ~ "Nicotine Metabolism Ratio",
+    Variables == "Only.Menthol" ~ "Exclusive Mentholated Cigarette User",
+    Variables == "readiness" ~ "Baseline Readiness to Quit Smoking"))
+
+total_missing <- sum(missing_data_summary$`Missing Data`)
+percent_missing_total <- (total_missing / total_rows) * 100
+
+total_row <- data.frame(
+  Variables = "Total",
+  `Missing Data` = total_missing,
+  Percent_Missing =percent_missing_total
+)
+
+names(total_row) <- names(missing_data_summary)
+missing_data_summary <- rbind(missing_data_summary, total_row)
+
+# gtsummary table
+missing_data_summary %>%
+  gt() %>%
+  tab_header(
+    title = "Table 1. Missing Data Summary "
+  ) %>%
+  cols_label(
+    Variables = "Variables",
+    `Missing Data` = "Missing Values",
+    Percent_Missing = "Percentage Missing"
+  ) %>%
+  fmt_number(
+    columns = vars(Percent_Missing),
+    decimals = 2  
+  )
+```
+
+Given the substantial proportion of missing data (21.667% overall) across several key variables, with particularly notable missingness in Nicotine Metabolism Ratio (7%) and Cigarette Reward Value at Baseline (6%), implementing multiple imputation is the most appropriate approach for this analysis. This decision is supported by two main factors: first, the cumulative impact of missing data across variables could significantly reduce the effective sample size if complete case analysis were used; second, the moderate size of our dataset means we cannot afford to lose statistical power by removing cases with missing values.
+
+Multiple imputation provides a robust solution that allows us to retain all observations while accounting for uncertainty in the imputed values. This is especially important for key variables like Nicotine Metabolism Ratio and Cigarette Reward Value at Baseline, which are crucial for understanding smoking cessation patterns. To maintain the integrity of our cross-validation process and prevent any potential data leakage, the imputation will be performed separately on the training and testing datasets. This separation ensures that information from the test set does not influence the imputation of the training set and vice versa, thereby providing a more reliable assessment of our model's performance.
+
+```{r results='hide', message=FALSE, warning=FALSE}
+# Load required libraries
+library(mice)
+library(dplyr)
+
+# First split data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(1:nrow(ori_data), 0.7 * nrow(ori_data))
+train_data <- ori_data[train_index, ]
+test_data <- ori_data[-train_index, ]
+
+# Perform multiple imputation on training data
+imp_train <- mice(train_data, 
+                 method = "pmm", 
+                 m = 5,        
+                 maxit = 50,   
+                 seed = 123,
+                 printFlag = FALSE)
+
+# Perform multiple imputation on test data
+imp_test <- mice(test_data, 
+                method = "pmm",
+                m = 5,
+                maxit = 50,
+                seed = 123,
+                printFlag = FALSE)
+
+# Complete the datasets (using first imputation)
+train_complete <- complete(imp_train, 1)
+test_complete <- complete(imp_test, 1)
+
+# Diagnostic plots
+densityplot(imp_train) 
+```
+
+Based on the density plots from our multiple imputation analysis, the imputed values (red) generally maintain similar distributions to the observed data (blue) across key variables. The imputations for NMR and readiness to quit smoking show particularly good alignment with the observed distributions, suggesting reliable imputation quality. The cigarette reward value and SHAPS score imputations demonstrate some variability across imputed datasets but maintain plausible distributions relative to the observed data. Incomeshows more variation in the imputed values, which is expected given its categorical nature and the complexity of socioeconomic factors. These diagnostic plots suggest that our multiple imputation approach has produced reasonable estimates while preserving the key features and relationships in the original data.
 
 # **Method**
 
@@ -59,21 +246,155 @@ Models then will be evaluated using the Area Under the Receiver Operating Charac
 
 # Results
 
+```{r,include=FALSE}
+# Load required libraries
+library(glmnet)
+library(caret)
+
+# Prepare training and test sets for modeling
+# Assuming 'mde_curr' is our outcome variable
+X_train <- model.matrix(mde_curr ~ ., train_complete)[,-1] # remove intercept
+y_train <- train_complete$mde_curr
+X_test <- model.matrix(mde_curr ~ ., test_complete)[,-1]
+y_test <- test_complete$mde_curr
+
+# Set up cross-validation
+set.seed(123)
+cv.folds <- createFolds(y_train, k = 10, returnTrain = TRUE)
+
+# Fit LASSO
+lasso_cv <- cv.glmnet(X_train, y_train, alpha = 1, family = "binomial")
+lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = lasso_cv$lambda.min, family = "binomial")
+lasso_pred <- predict(lasso_model, newx = X_test, type = "response")
+lasso_auc <- roc(y_test, as.vector(lasso_pred))$auc
+
+# Fit Ridge
+ridge_cv <- cv.glmnet(X_train, y_train, alpha = 0, family = "binomial")
+ridge_model <- glmnet(X_train, y_train, alpha = 0, lambda = ridge_cv$lambda.min, family = "binomial")
+ridge_pred <- predict(ridge_model, newx = X_test, type = "response")
+ridge_auc <- roc(y_test, as.vector(ridge_pred))$auc
+
+# Fit Logistic Regression
+log_model <- glm(mde_curr ~ ., data = train_complete, family = "binomial")
+log_pred <- predict(log_model, newdata = test_complete, type = "response")
+log_auc <- roc(y_test, log_pred)$auc
+
+# Compare model performances
+model_comparison <- data.frame(
+ Model = c("LASSO", "Ridge", "Logistic"),
+ AUC = c(lasso_auc, ridge_auc, log_auc)
+)
+
+```
+
 In the Lasso regression model, a significant number of coefficients were reduced to zero, highlighting Lasso’s strength in simplifying the model and selecting only the most relevant features. This capability is especially valuable in the current settings, where identifying impactful variables is critical for targeted interventions. For instance, “Age” and “FTCD Score at Baseline” showed negative coefficients in both models, meaning that older individuals and those with higher nicotine dependence are less likely to quit smoking. In other words, the findings suggest that older age and a higher dependence on nicotine may serve as barriers to cessation, possibly due to the difficulty older adults face in breaking established habits or the stronger physiological hold nicotine has on those with higher dependence.
 
-On the other end, Ridge regression retains all variables in the model but shrinks their coefficient values, allowing for a more nuanced understanding of each predictor’s impact without excluding any. This was observed with the BDI Score, where Ridge showed a moderated influence of baseline depression on quitting outcomes. In contrast, Lasso’s treatment of this variable fluctuated between positive and negative impacts. In other words, Ridge suggests a more balanced effect of depression on quitting success, while Lasso implies that depression could have varied effects, perhaps affecting patient motivation and response to treatment in complex ways.
+```{r}
+# Load required libraries
+library(glmnet)
+library(caret)
+library(knitr)
+library(kableExtra)
 
-![Model Comparison Results Between Lasso And Ridge](images/Model_Comparison_Table.jpg){fig-align="center" width="429"}
+# Extract non-zero coefficients for each model
+lasso_coef <- coef(lasso_model)[,1]
+lasso_coef <- lasso_coef[lasso_coef != 0]
+
+ridge_coef <- coef(ridge_model)[,1]
+ridge_coef <- ridge_coef[ridge_coef != 0]
+
+log_coef <- coef(log_model)
+log_coef <- log_coef[log_coef != 0]
+
+# Create a data frame with non-zero coefficients for each model
+coef_table <- data.frame(
+  Variable = union(names(lasso_coef), union(names(ridge_coef), names(log_coef))),
+  LASSO = rep(0, length(union(names(lasso_coef), union(names(ridge_coef), names(log_coef))))),
+  Ridge = rep(0, length(union(names(lasso_coef), union(names(ridge_coef), names(log_coef))))),
+  Logistic = rep(0, length(union(names(lasso_coef), union(names(ridge_coef), names(log_coef)))))
+)
+
+# Populate the table with non-zero coefficients
+coef_table$LASSO[match(names(lasso_coef), coef_table$Variable)] <- lasso_coef
+coef_table$Ridge[match(names(ridge_coef), coef_table$Variable)] <- ridge_coef
+coef_table$Logistic[match(names(log_coef), coef_table$Variable)] <- log_coef
+
+# Remove rows with "NA" in the Variable column
+coef_table <- coef_table[!is.na(coef_table$Variable), ]
+
+# Remove columns with all "NA" values
+coef_table <- coef_table[, colSums(is.na(coef_table)) != nrow(coef_table)]
+
+
+coef_kable <- kable(coef_table)
+
+coef_kable
+
+```
+
+On the other end, Ridge regression retains all variables in the model but shrinks their coefficient values, allowing for a more nuanced understanding of each predictor’s impact without excluding any. This was observed with the BDI Score, where Ridge showed a moderated influence of baseline depression on quitting outcomes. In contrast, Lasso’s treatment of this variable fluctuated between positive and negative impacts. In other words, Ridge suggests a more balanced effect of depression on quitting success, while Lasso implies that depression could have varied effects, perhaps affecting patient motivation and response to treatment in complex ways.
 
 Both models achieved an Area Under the Curve (AUC) of 0.73, demonstrating strong predictive accuracy and a solid capacity to differentiate between individuals likely and unlikely to quit smoking by the treatment’s end. In other words, both models performed effectively in forecasting cessation outcomes, despite their differences in how they handle predictor variables. This equivalence in AUC, even with variations in coefficient magnitudes and significance, suggests that both Lasso and Ridge offer robust and reliable frameworks for understanding and predicting smoking cessation outcomes.
 
 The logistic regression model, on the other end, offered valuable insights into predictors linked to smoking abstinence. Indicated by the coefficients and significance values, baseline variables such as FTCD score (p = .020) and time to first cigarette (p = .023) shown as statistically significant. This suggest that baseline nicotine dependence levels significantly influence abstinence outcomes. In other words, higher dependence levels appear to reduce the likelihood of successfully quitting.
 
+```{r}
+
+# Create ROC curves for visualization
+roc_lasso <- roc(y_test, as.vector(lasso_pred))
+roc_ridge <- roc(y_test, as.vector(ridge_pred))
+roc_log <- roc(y_test, log_pred)
+
+# Plot ROC curves
+plot(roc_lasso, col = "red", main = "Figure 4.ROC Curves Comparison")
+lines(roc_ridge, col = "blue") 
+lines(roc_log, col = "green")
+legend("bottomright", 
+      legend = c("LASSO", "Ridge", "Logistic"),
+      col = c("red", "blue", "green"),
+      lty = 1)
+```
+
 The model’s Area Under the Curve (AUC) score was 0.519, which is lower than both Lasso and Ridge, indicates limited ability to distinguish between abstinent and non-abstinent individuals. This low AUC suggests that logistic regression, although helpful in interpreting the individual effects of predictors, may lack the the ability to capture the complex moderator effect. In simple terms, the logistic regressionmay not model the relationships as effectively as methods like Lasso or Ridge, which explains why some variables in this model show weaker predictive power.
 
-![Logistic Regression Coefficients and AUC Part 1](images/glm_table.jpg){fig-align="center" width="607"}
+```{r}
+# Get ROC curve data
+roc_lasso_df <- data.frame(
+  FPR = roc_lasso$specificities,
+  TPR = roc_lasso$sensitivities,
+  Model = "LASSO"
+)
 
-![Logistic Regression Coefficients and AUC Part 2](images/clipboard-4020754486.png){fig-align="center" width="453"}
+roc_ridge_df <- data.frame(
+  FPR = roc_ridge$specificities,
+  TPR = roc_ridge$sensitivities,
+  Model = "Ridge"
+)
+
+roc_log_df <- data.frame(
+  FPR = roc_log$specificities,
+  TPR = roc_log$sensitivities,
+  Model = "Logistic"
+)
+
+# Combine all ROC curve data
+roc_df <- rbind(roc_lasso_df, roc_ridge_df, roc_log_df)
+
+# Create plot
+ggplot(roc_df, aes(x = FPR, y = TPR, color = Model)) +
+  geom_line() +
+  scale_color_manual(values = c("LASSO" = "red", "Ridge" = "blue", "Logistic" = "green")) +
+  geom_abline(linetype = "dashed") +
+  labs(title = "Figure 5. ROC Curves Comparison",
+       x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)") +
+  theme_minimal() +
+  annotate("text", x = 0.75, y = 0.25,
+           label = paste("AUC (LASSO):", round(lasso_auc, 3), "\n",
+                        "AUC (Ridge):", round(ridge_auc, 3), "\n",
+                        "AUC (Logistic):", round(log_auc, 3))) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
 
 In summary, the comparative analysis of the Lasso, Ridge, and Logistic Regression models underscores the critical role of selecting suitable modeling techniques that align with the research goals and the characteristics of the data. Each model offers unique insights into the factors affecting smoking cessation, with Lasso and Ridge models pinpointing key predictors through regularization, while the Logistic Regression model provides a more traditional, interpretable framework. Together, these models reveal the complex, multifaceted nature of the cessation process. In clinical settings, insights gained from these models could guide the design of more personalized and effective interventions by focusing on the most impactful predictors identified across models, ultimately improving the success of smoking cessation programs.
 
