@@ -4,7 +4,7 @@ Author: Evan. C
 
 My sincere gratitude to Dr. Alice Paul for her exceptional teaching and unwavering support. Her guidences have profoundly shaped my perspective across a broad spectrum.
 
-**Project I**: Investigating the Effects of Age, Sex, and Environmental Conditions on Marathon Performance Across the Lifespan
+**Project I**: Investigating the Effects of Age, Sex, and Environmental Conditions on Marathon Performance
 
 **Project II**: Identifying Key Predictors and Moderators of Smoking Cessation Outcomes in Adults with Major Depressive Disorder
 
